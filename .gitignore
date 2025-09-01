@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+
+# Virtual envs
+.venv/
+venv/
+ENV/
+
+# Environment / config
+.env
+.env.*
+.python-version
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Streamlit / Ultralytics outputs
+.streamlit/
+runs/
+wandb/
+
+# Data
+dataset/
+sample_images/
+
+# Models
+*.pt
+!best.pt
+
+# Logs / temp
+logs/
+tmp/
+*.log
+.cache/
