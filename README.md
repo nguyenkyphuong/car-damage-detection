@@ -112,8 +112,6 @@ The `sample_images/` folder is included so others can quickly test the app and t
 
 ## Demo 
 
-```markdown
 ![Demo](demo.gif)
-```
 
 ---
