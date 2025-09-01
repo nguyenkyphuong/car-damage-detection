@@ -39,7 +39,6 @@ wandb/
 
 # Data
 dataset/
-sample_images/
 
 # Models
 *.pt
