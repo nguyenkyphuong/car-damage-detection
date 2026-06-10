@@ -48,7 +48,7 @@ os.makedirs(RESULT_DIR, exist_ok=True)
 
 app = FastAPI(title="Car Damage Detection API")
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 app.add_middleware(
     CORSMiddleware,
@@ -145,6 +145,29 @@ def verify_admin_token(
             detail="Invalid token"
         )
 
+def get_optional_admin(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    if credentials is None:
+        return None
+
+    try:
+        token = credentials.credentials
+
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        if payload.get("role") == "admin":
+            return payload
+
+        return None
+
+    except JWTError:
+        return None
+
 
 # =========================
 # Load AI model
@@ -191,7 +214,10 @@ def login(data: LoginRequest):
 
 
 @app.post("/detect")
-async def detect_damage(file: UploadFile = File(...)):
+async def detect_damage(
+    file: UploadFile = File(...),
+    user=Depends(get_optional_admin)
+):
     file_ext = os.path.splitext(file.filename)[1].lower()
     image_id = str(uuid.uuid4())
 
@@ -238,20 +264,21 @@ async def detect_damage(file: UploadFile = File(...)):
             key=lambda x: x["confidence"]
         )
 
-    db = SessionLocal()
+    if user is not None:
+        db = SessionLocal()
 
-    history = DetectionHistory(
-        original_image=f"/uploads/{original_filename}",
-        result_image=f"/results/{result_filename}",
-        damage_type=best_detection["damage_type"] if best_detection else None,
-        confidence=best_detection["confidence"] if best_detection else None,
-        bbox=str(best_detection["bbox"]) if best_detection else None,
-        all_detections=json.dumps(detections, ensure_ascii=False),
-    )
+        history = DetectionHistory(
+            original_image=f"/uploads/{original_filename}",
+            result_image=f"/results/{result_filename}",
+            damage_type=best_detection["damage_type"] if best_detection else None,
+            confidence=best_detection["confidence"] if best_detection else None,
+            bbox=str(best_detection["bbox"]) if best_detection else None,
+            all_detections=json.dumps(detections, ensure_ascii=False),
+        )
 
-    db.add(history)
-    db.commit()
-    db.close()
+        db.add(history)
+        db.commit()
+        db.close()
 
     return {
         "original_image": f"/uploads/{original_filename}",
@@ -259,6 +286,7 @@ async def detect_damage(file: UploadFile = File(...)):
         "predicted_damage": best_detection,
         "all_detections": detections,
         "total_detections": len(detections),
+        "saved_to_history": user is not None,
     }
 
 
