@@ -29,3 +29,18 @@ uvicorn main:app --reload
 ```bash
 npm install
 npm run dev
+```
+## Model Documentation
+
+For detailed information about the AI model, including:
+
+Dataset preparation
+Data preprocessing
+Training process
+YOLOv8 configuration
+Evaluation results
+Model performance
+
+please refer to:
+```bash
+model/README.md
