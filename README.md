@@ -23,7 +23,7 @@ AI-powered web application for detecting vehicle damage from images using YOLOv8
 ```bash
 pip install -r requirements.txt
 uvicorn main:app --reload
-## Run Backend
+```
 
 ## Run frontend
 ```bash
