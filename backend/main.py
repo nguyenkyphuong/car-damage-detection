@@ -322,14 +322,81 @@ def get_stats(user=Depends(verify_admin_token)):
     items = db.query(DetectionHistory).all()
     db.close()
 
+    total = len(items)
+
     damage_by_type = {}
+    confidence_sum = 0
+    confidence_count = 0
+
+    trend_map = {}
+    damage_types = set()
 
     for item in items:
-        damage_by_type[item.damage_type] = (
-            damage_by_type.get(item.damage_type, 0) + 1
+        damage = item.damage_type or "Unknown"
+        damage_types.add(damage)
+
+        damage_by_type[damage] = damage_by_type.get(damage, 0) + 1
+
+        if item.confidence is not None:
+            confidence_sum += item.confidence
+            confidence_count += 1
+
+        date_key = item.created_at.strftime("%Y-%m-%d")
+
+        if date_key not in trend_map:
+            trend_map[date_key] = {}
+
+        trend_map[date_key][damage] = (
+            trend_map[date_key].get(damage, 0) + 1
         )
 
+    average_confidence = (
+        round(confidence_sum / confidence_count, 4)
+        if confidence_count > 0
+        else 0
+    )
+
+    most_common_damage = None
+
+    if damage_by_type:
+        most_common_damage = max(
+            damage_by_type,
+            key=damage_by_type.get
+        )
+
+    top_damage_types = [
+        {
+            "name": damage,
+            "count": count,
+            "percentage": round((count / total) * 100, 2)
+            if total > 0
+            else 0
+        }
+        for damage, count in sorted(
+            damage_by_type.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+    ]
+
+    damage_trend_over_time = []
+
+    for date in sorted(trend_map.keys()):
+        row = {
+            "date": date
+        }
+
+        for damage in sorted(damage_types):
+            row[damage] = trend_map[date].get(damage, 0)
+
+        damage_trend_over_time.append(row)
+
     return {
-        "total_detections": len(items),
+        "total_detections": total,
+        "average_confidence": average_confidence,
+        "most_common_damage": most_common_damage,
         "damage_by_type": damage_by_type,
+        "top_damage_types": top_damage_types,
+        "damage_types": sorted(list(damage_types)),
+        "damage_trend_over_time": damage_trend_over_time,
     }

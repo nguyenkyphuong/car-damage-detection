@@ -6,6 +6,12 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
 
 import api from "./api/api";
@@ -35,6 +41,15 @@ function App() {
 
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
+
+  const chartColors = [
+      "#60a5fa",
+      "#93c5fd",
+      "#bfdbfe",
+      "#2563eb",
+      "#38bdf8",
+      "#818cf8",
+  ];
 
   const handleLogin = async (e) => {
       e.preventDefault();
@@ -525,11 +540,7 @@ function App() {
           !isLoggedIn ? (
             <div style={styles.card}>
               <h2>🔒 Cần đăng nhập</h2>
-
-              <p>
-                Bạn cần đăng nhập quản trị viên để xem
-                dashboard thống kê.
-              </p>
+              <p>Bạn cần đăng nhập quản trị viên để xem dashboard thống kê.</p>
 
               <button
                 style={styles.detectButton}
@@ -539,58 +550,136 @@ function App() {
               </button>
             </div>
           ) : (
-          <section>
-            <h1 style={styles.pageTitle}>Dashboard</h1>
-            <p style={styles.pageDescription}>
-              Thống kê kết quả phát hiện hư hỏng xe theo dữ liệu đã lưu.
-            </p>
+            <section>
+              <h1 style={styles.pageTitle}>Dashboard thống kê</h1>
+              <p style={styles.pageDescription}>
+                Theo dõi kết quả phát hiện hư hỏng, độ tin cậy trung bình của mô hình
+                và xu hướng kiểm tra theo thời gian.
+              </p>
 
-            {statsLoading && <p>Đang tải thống kê...</p>}
+              {statsLoading && <p>Đang tải thống kê...</p>}
 
-            {stats && (
-              <>
-                <div style={styles.statsGrid}>
-                  <div style={styles.statCard}>
-                    <p style={styles.statLabel}>Tổng số ảnh đã kiểm tra</p>
-                    <h2 style={styles.statValue}>
-                      {stats.total_detections}
-                    </h2>
+              {stats && (
+                <>
+                  <div style={styles.statsGrid}>
+                    <div style={styles.statCard}>
+                      <p style={styles.statLabel}>Tổng số lượt kiểm tra</p>
+                      <h2 style={styles.statValue}>{stats.total_detections}</h2>
+                    </div>
+
+                    <div style={styles.statCard}>
+                      <p style={styles.statLabel}>Độ tin cậy trung bình</p>
+                      <h2 style={styles.statValue}>
+                        {Math.round((stats.average_confidence || 0) * 100)}%
+                      </h2>
+                    </div>
+
+                    <div style={styles.statCard}>
+                      <p style={styles.statLabel}>Hư hỏng phổ biến nhất</p>
+                      <h2 style={styles.statValueSmall}>
+                        {stats.most_common_damage || "Chưa có"}
+                      </h2>
+                    </div>
                   </div>
 
-                  <div style={styles.statCard}>
-                    <p style={styles.statLabel}>Số loại hư hỏng</p>
-                    <h2 style={styles.statValue}>
-                      {Object.keys(stats.damage_by_type || {}).length}
-                    </h2>
-                  </div>
-                </div>
+                  <div style={styles.dashboardGrid}>
+                    <div style={styles.card}>
+                      <h3 style={styles.cardTitle}>Damage Distribution</h3>
 
-                <div style={styles.card}>
-                  <h3 style={styles.cardTitle}>
-                    Thống kê hư hỏng theo loại
-                  </h3>
+                      <div style={{ width: "100%", height: 320 }}>
+                        <ResponsiveContainer>
+                          <BarChart
+                            data={Object.entries(stats.damage_by_type || {}).map(
+                              ([name, value]) => ({
+                                name,
+                                value,
+                              })
+                            )}
+                          >
+                            <XAxis dataKey="name" />
+                            <YAxis allowDecimals={false} />
+                            <Tooltip />
+                            <Bar dataKey="value" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
 
-                  <div style={{ width: "100%", height: 360 }}>
-                    <ResponsiveContainer>
-                      <BarChart
-                        data={Object.entries(stats.damage_by_type || {}).map(
-                          ([name, value]) => ({
-                            name,
-                            value,
-                          })
-                        )}
-                      >
-                        <XAxis dataKey="name" />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip />
-                        <Bar dataKey="value" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <div style={styles.card}>
+                      <h3 style={styles.cardTitle}>Tỷ lệ từng loại hư hỏng</h3>
+
+                      <div style={{ width: "100%", height: 320 }}>
+                        <ResponsiveContainer>
+                          <PieChart>
+                            <Pie
+                              data={stats.top_damage_types || []}
+                              dataKey="count"
+                              nameKey="name"
+                              outerRadius={80}
+                              label
+                            >
+                              {(stats.top_damage_types || []).map((entry, index) => (
+                                <Cell
+                                  key={entry.name}
+                                  fill={chartColors[index % chartColors.length]}
+                                />
+                              ))}
+                            </Pie>
+
+                            <Tooltip />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-          </section>
+
+                  <div style={styles.card}>
+                    <h3 style={styles.cardTitle}>
+                      Xu hướng từng loại hư hỏng theo thời gian
+                    </h3>
+
+                    <div style={{ width: "100%", height: 360 }}>
+                      <ResponsiveContainer>
+                        <LineChart data={stats.damage_trend_over_time || []}>
+                          <XAxis dataKey="date" />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip />
+                          <Legend />
+
+                          {(stats.damage_types || []).map((damage, index) => (
+                            <Line
+                              key={damage}
+                              type="monotone"
+                              dataKey={damage}
+                              stroke={chartColors[index % chartColors.length]}
+                              strokeWidth={3}
+                            />
+                          ))}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div style={styles.card}>
+                    <h3 style={styles.cardTitle}>Top loại hư hỏng phổ biến</h3>
+
+                    {(stats.top_damage_types || []).map((item, index) => (
+                      <div key={item.name} style={styles.topDamageRow}>
+                        <span style={styles.topDamageRank}>{index + 1}</span>
+
+                        <div style={styles.topDamageInfo}>
+                          <b>{item.name}</b>
+                          <span>{item.count} lượt kiểm tra</span>
+                        </div>
+
+                        <strong>{item.percentage}%</strong>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
           )
         )}
         {page === "about" && (
@@ -1217,6 +1306,48 @@ const styles = {
       fontSize: "13px",
       color: "#64748b",
       marginTop: "2px",
+    },
+
+    dashboardGrid: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "24px",
+      marginBottom: "24px",
+    },
+
+    statValueSmall: {
+      margin: "10px 0 0",
+      color: "#2563eb",
+      fontSize: "24px",
+      fontWeight: 800,
+    },
+
+    topDamageRow: {
+      display: "flex",
+      alignItems: "center",
+      gap: "14px",
+      padding: "14px 0",
+      borderBottom: "1px solid #e2e8f0",
+    },
+
+    topDamageRank: {
+      width: "34px",
+      height: "34px",
+      borderRadius: "12px",
+      background: "#dbeafe",
+      color: "#2563eb",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: 800,
+    },
+
+    topDamageInfo: {
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      gap: "4px",
+      color: "#1e293b",
     },
 };
 
